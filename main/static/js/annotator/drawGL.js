@@ -26,14 +26,14 @@
 /// going into the shader use this convention and are flipped prior to
 /// conversion to clip space (-1, 1).
 
-const vsSource = `#version 300 es
-    in vec2 vertex;
+const vsSource = `#version 100
+    attribute vec2 vertex;
 
     // RGBA value of vertex
-    in vec4 color;
+    attribute vec4 color;
 
     // Represents either the uv coord or nothing (if negative)
-    in vec2 uvcoord;
+    attribute vec2 uvcoord;
 
     // These two matrices convert our pixel coordinate vertex (0,0) to
     // (imgWidth,imgHeight) to view space coordinates.
@@ -48,8 +48,8 @@ const vsSource = `#version 300 es
     // only supports 2D textures, so we will just make it Nx1.
     uniform sampler2D colorPalette;
 
-    out vec2 texcoord;
-    out vec4 rgba;
+    varying vec2 texcoord;
+    varying vec4 rgba;
 
     void main() {
       vec2 flippedVertex = vec2(vertex.x, u_ViewFlip-vertex.y);
@@ -62,13 +62,13 @@ const vsSource = `#version 300 es
 `;
 
 // Fragment shader for rendering image as a texture
-const imageFsSource = `#version 300 es
+const imageFsSource = `#version 100
     precision mediump float;
-    in vec2 texcoord;
-    in vec4 rgba;
+    varying vec2 texcoord;
+    varying vec4 rgba;
 
     // Make sure pixel output is at location 0
-    layout(location = 0) out vec4 pixelOutput;
+    //layout(location = 0) out vec4 pixelOutput;
 
     // Can make a test pattern with outputing color palette.
     uniform sampler2D imageTexture;
@@ -76,11 +76,11 @@ const imageFsSource = `#version 300 es
     void main() {
          if (texcoord.x >= 0.0)
          {
-             pixelOutput = texture(imageTexture, texcoord);
+             gl_FragColor = texture2D(imageTexture, texcoord);
          }
          else
          {
-             pixelOutput = rgba;
+             gl_FragColor = rgba;
          }
     }
 `;
