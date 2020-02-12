@@ -453,9 +453,10 @@ class AnnotationCanvas extends TatorElement
       this._offscreen = new OffscreenCanvas(100, 100);
       this._offscreenDraw = new DrawGL(this._offscreen);
     }
-    catch
+    catch(err)
     {
       console.warn("No offscreen canvas capability.");
+      console.warn(err);
     }
   }
 

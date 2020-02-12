@@ -226,15 +226,26 @@ class DrawGL
   setViewport(canvas)
   {
     // Turn off default antialias as we control it ourselves
+    // for webgl2 clients
     var gl = this.viewport.getContext("webgl2", {antialias: false,
                                                  depth: false
                                                 });
-    this.gl=gl;
+    this.gl = gl;
+    this._glVersion = 2;
     if (gl == null)
     {
-      window.alert("Unable to initialize rendering resources.");
-      // @todo put in link to supported browser page
-      return;
+      gl = this.viewport.getContext("webgl", {antialias: true,
+                                              depth: false
+                                             });
+      this._glVersion = 1;
+      this.gl = gl;
+      if (gl == null)
+      {
+        this._glVersion = 0;
+        window.alert("Unable to initialize rendering resources.");
+        // @todo put in link to supported browser page
+        return;
+      }
     }
 
     const vsShader = this.initShader(gl.VERTEX_SHADER, vsSource);
@@ -279,9 +290,17 @@ class DrawGL
     // 30 fps x 4 (wait time) x 2 = 240
     this.frameBuffer = new FrameBuffer(240, initTexture);
 
-    // Initialze the backbuffer to use for MSAA
-    this.msaaBuffer = gl.createRenderbuffer();
-    this.msaaFramebuffer = gl.createFramebuffer();
+    if (this._glVersion >= 2)
+    {
+      // Initialze the backbuffer to use for MSAA
+      this.msaaBuffer = gl.createRenderbuffer();
+      this.msaaFramebuffer = gl.createFramebuffer();
+    }
+    else
+    {
+      // in webgl 1.0 we use the system's msaa so the msaaBuffer is the default
+      this.msaaFramebuffer = null;
+    }
   };
 
   // Nominally 1,1 but resizes can distort
@@ -326,16 +345,18 @@ class DrawGL
 
     console.info("GL Viewport: " + this.clientWidth + "x" + this.clientHeight );
 
-    //Allocate MSAA renderbuffer (4x multisample)
-    gl.bindRenderbuffer(gl.RENDERBUFFER, this.msaaBuffer);
-    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, 4,
-                                      gl.RGBA8, this.clientWidth, this.clientHeight);
+    if (this._glVersion >= 2)
+    {
+      //Allocate MSAA renderbuffer (4x multisample)
+      gl.bindRenderbuffer(gl.RENDERBUFFER, this.msaaBuffer);
+      gl.renderbufferStorageMultisample(gl.RENDERBUFFER, 4,
+                                        gl.RGBA8, this.clientWidth, this.clientHeight);
 
-    //Associate MSAA framebuffer COLOR0 to render buffer
-    gl.bindFramebuffer(gl.FRAMEBUFFER, this.msaaFramebuffer);
-    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
-                               gl.RENDERBUFFER, this.msaaBuffer);
-
+      //Associate MSAA framebuffer COLOR0 to render buffer
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.msaaFramebuffer);
+      gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0,
+                                 gl.RENDERBUFFER, this.msaaBuffer);
+    }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
     // Load the uniform for the view screen size + shift
@@ -913,12 +934,15 @@ class DrawGL
       gl.drawElements(this.gl.TRIANGLES, bufferToUse.indices.length, this.gl.UNSIGNED_SHORT, 0)
 
       // Blit back to the draw buffer
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER,this.msaaFramebuffer);
-      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
-      gl.blitFramebuffer(0,0,this.viewport.width, this.viewport.height,
-                         0,0,this.viewport.width, this.viewport.height,
-                         gl.COLOR_BUFFER_BIT, gl.LINEAR);
-      gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);
+      if (this.msaaFramebuffer != null)
+      {
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER,this.msaaFramebuffer);
+        gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,null);
+        gl.blitFramebuffer(0,0,this.viewport.width, this.viewport.height,
+                           0,0,this.viewport.width, this.viewport.height,
+                           gl.COLOR_BUFFER_BIT, gl.LINEAR);
+        gl.bindFramebuffer(gl.READ_FRAMEBUFFER,null);
+      }
     }
     else
     {
