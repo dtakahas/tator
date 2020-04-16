@@ -1,11 +1,11 @@
 import traceback
 
-from rest_framework.compat import coreschema, coreapi
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from django.core.exceptions import ObjectDoesNotExist
+from drf_yasg import openapi
 
 from ..models import AttributeTypeBase
 from ..models import AttributeTypeBool
@@ -19,7 +19,7 @@ from ..models import EntityTypeBase
 from ..models import Project
 from ..serializers import AttributeTypeSerializer
 
-from ._schema import Schema
+from ._schema import make_schema
 from ._attributes import convert_attribute
 from ._permissions import ProjectFullControlPermission
 
@@ -27,101 +27,122 @@ from ._permissions import ProjectFullControlPermission
 class AttributeTypeListAPI(APIView):
     serializer_class = AttributeTypeSerializer
     permission_classes = [ProjectFullControlPermission]
-    schema = Schema({
+    swagger_schema = make_schema({
         'all': [
-            coreapi.Field(
+            openapi.Parameter(
                 name='project',
-                location='path',
+                in_='path',
                 required=True,
-                schema=coreschema.Integer(description='A unique integer identifying a project')),
+                description='A unique integer identifying a project',
+                type=openapi.TYPE_INTEGER),
         ],
         'GET': [
-            coreapi.Field(
+            openapi.Parameter(
                 name='applies_to',
-                location='body',
+                in_='query',
                 required=False,
-                schema=coreschema.Integer(description='Unique integer identifying an entity type '
-                                                      'that this attribute describes.')),
+                description='Unique integer identifying an entity type '
+                            'that this attribute describes.',
+                type=openapi.TYPE_INTEGER),
         ],
         'POST': [
-            coreapi.Field(
+            openapi.Parameter(
                 name='name',
-                location='body',
+                in_='body',
                 required=True,
-                schema=coreschema.String(description='Name of the attribute.')),
-            coreapi.Field(
+                description='Name of the attribute.',
+                schema=openapi.Schema(type=openapi.TYPE_STRING)),
+            openapi.Parameter(
                 name='description',
-                location='body',
+                in_='body',
                 required=False,
-                schema=coreschema.String(description='Description of the attribute.')),
-            coreapi.Field(
+                description='Description of the attribute.',
+                schema=openapi.Schema(type=openapi.TYPE_STRING),
+                default=""),
+            openapi.Parameter(
                 name='dtype',
-                location='body',
+                in_='body',
                 required=True,
-                schema=coreschema.Enum(description='Data type of the attribute.',
-                                       enum=['bool', 'int', 'float', 'enum', 'str', 
-                                             'datetime', 'geopos'])),
-            coreapi.Field(
-                name='applies_to',
-                location='body',
-                required=True,
-                schema=coreschema.Integer(description='Unique integer identifying an entity type '
-                                                      'that this attribute describes.')),
-            coreapi.Field(
-                name='order',
-                location='body',
-                required=False,
-                schema=coreschema.Integer(description='Integer specifying where this attribute '
-                                                      'is displayed in the UI. Negative values '
-                                                      'are hidden by default.')),
-            coreapi.Field(
-                name='default',
-                location='body',
-                required=False,
-                schema=coreschema.Anything(description='Default value for the attribute.')),
-            coreapi.Field(
-                name='lower_bound',
-                location='body',
-                required=False,
-                schema=coreschema.Number(description='Lower bound for float or int dtype.')),
-            coreapi.Field(
-                name='upper_bound',
-                location='body',
-                required=False,
-                schema=coreschema.Number(description='Upper bound for float or int dtype.')),
-            coreapi.Field(
-                name='choices',
-                location='body',
-                required=False,
-                schema=coreschema.Array(description='Array of possible values for enum dtype.')),
-            coreapi.Field(
-                name='labels',
-                location='body',
-                required=False,
-                schema=coreschema.Array(description='Array of labels for enum dtype.')),
-            coreapi.Field(
-                name='autocomplete',
-                location='body',
-                required=False,
-                schema=coreschema.Object(
-                    description='JSON object indictating URL of autocomplete service.',
-                    properties={'serviceUrl': coreschema.String(
-                        description='URL of autocomplete service.',
-                    )},
+                description='Data type of the attribute',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    enum=['bool', 'int', 'float', 'enum', 'str', 'datetime', 'geopos'],
                 ),
             ),
-            coreapi.Field(
-                name='use_current',
-                location='body',
+            openapi.Parameter(
+                name='applies_to',
+                in_='body',
+                required=True,
+                description='Unique integer identifying an entity type '
+                            'that this attribute describes.',
+                schema=openapi.Schema(type=openapi.TYPE_INTEGER)),
+            openapi.Parameter(
+                name='order',
+                in_='body',
                 required=False,
-                schema=coreschema.Boolean(description='True to use current datetime as default.')),
+                description='Integer specifying where this attribute '
+                            'is displayed in the UI. Negative values '
+                            'are hidden by default.',
+                schema=openapi.Schema(type=openapi.TYPE_INTEGER),
+                default=0),
+            openapi.Parameter(
+                name='default',
+                in_='body',
+                required=False,
+                description='Default value for the attribute.',
+                schema=openapi.Schema(type=openapi.TYPE_STRING)),
+            openapi.Parameter(
+                name='lower_bound',
+                in_='body',
+                required=False,
+                description='Lower bound for float or int dtype.',
+                schema=openapi.Schema(type=openapi.TYPE_NUMBER)),
+            openapi.Parameter(
+                name='upper_bound',
+                in_='body',
+                required=False,
+                description='Upper bound for float or int dtype.',
+                schema=openapi.Schema(type=openapi.TYPE_NUMBER)),
+            openapi.Parameter(
+                name='choices',
+                in_='body',
+                required=False,
+                description='Array of possible values for enum dtype.',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(type=openapi.TYPE_STRING))),
+            openapi.Parameter(
+                name='labels',
+                in_='body',
+                required=False,
+                description='Array of labels for enum dtype.',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Items(type=openapi.TYPE_STRING))),
+            openapi.Parameter(
+                name='autocomplete',
+                in_='body',
+                required=False,
+                description='JSON object indictating URL of autocomplete service.',
+                schema=openapi.Schema(
+                    type=openapi.TYPE_OBJECT,
+                    properties={'serviceUrl': openapi.Schema(type=openapi.TYPE_STRING)},
+                    description='URL of autocomplete service.',
+                ),
+            ),
+            openapi.Parameter(
+                name='use_current',
+                in_='body',
+                required=False,
+                description='True to use current datetime as default.',
+                schema=openapi.Schema(type=openapi.TYPE_BOOLEAN)),
         ],
     })
 
     def get(self, request, format=None, **kwargs):
         response=Response({})
         try:
-            params = self.schema.parse(request, kwargs)
+            params = self.swagger_schema.parse(request, kwargs)
             qs = AttributeTypeBase.objects.filter(project=params['project'])
             if params['applies_to']:
                 qs = qs.filter(**params)
@@ -139,7 +160,7 @@ class AttributeTypeListAPI(APIView):
         response=Response({})
         try:
             # Get the parameters.
-            params = self.schema.parse(request, kwargs)
+            params = self.swagger_schema.parse(request, kwargs)
             params['applies_to'] = EntityTypeBase.objects.get(pk=params['applies_to'])
             params['project'] = Project.objects.get(pk=params['project'])
             if params['order'] is None:
@@ -193,26 +214,29 @@ class AttributeTypeListAPI(APIView):
 class AttributeTypeDetailAPI(RetrieveUpdateDestroyAPIView):
     serializer_class = AttributeTypeSerializer
     permission_classes = [ProjectFullControlPermission]
-    schema = Schema({
+    swagger_schema = make_schema({
         'all': [
-            coreapi.Field(
+            openapi.Parameter(
                 name='pk',
-                location='path',
+                in_='path',
                 required=True,
-                schema=coreschema.Integer(description='A unique integer identifying an attribute type')),
+                description='A unique integer identifying an attribute type',
+                type=openapi.TYPE_INTEGER),
         ],
         'GET': [],
         'PATCH': [
-            coreapi.Field(
+            openapi.Parameter(
                 name='name',
-                location='body',
+                in_='body',
                 required=False,
-                schema=coreschema.String(description='Name of the attribute.')),
-            coreapi.Field(
+                description='Name of the attribute.',
+                schema=openapi.Schema(type=openapi.TYPE_STRING)),
+            openapi.Parameter(
                 name='description',
-                location='body',
+                in_='body',
                 required=False,
-                schema=coreschema.String(description='Description of the attribute.')),
+                description='Description of the attribute.',
+                schema=openapi.Schema(type=openapi.TYPE_STRING)),
         ],
         'DELETE': [],
     })

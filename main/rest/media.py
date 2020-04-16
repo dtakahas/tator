@@ -17,6 +17,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import PermissionDenied
 from django.db import connection
 from django.conf import settings
+from drf_yasg import openapi
 
 from ..models import EntityBase
 from ..models import EntityMediaBase
@@ -33,7 +34,7 @@ from ._attributes import bulk_patch_attributes
 from ._attributes import patch_attributes
 from ._attributes import validate_attributes
 from ._util import delete_polymorphic_qs
-from ._schema import Schema
+from ._schema import make_schema
 from ._permissions import ProjectEditPermission
 from ._permissions import ProjectViewOnlyPermission
 
@@ -254,23 +255,27 @@ class MediaDetailAPI(RetrieveUpdateDestroyAPIView):
             return response;
 
 class GetFrameAPI(APIView):
-    schema = Schema({'GET' : [
-        coreapi.Field(name='pk',
-                      required=True,
-                      location='path',
-                      schema=coreschema.Integer(description='A unique integer value identifying a media')),
-        coreapi.Field(name='frames',
-                      required=False,
-                      location='query',
-                      schema=coreschema.String(description='Comma-seperated list of frames to capture (default = 0)')),
-        coreapi.Field(name='tile',
-                      required=False,
-                      location='query',
-                      schema=coreschema.String(description='wxh, if not supplied is made as squarish as possible')),
-        coreapi.Field(name='roi',
-                      required=False,
-                      location='query',
-                      schema=coreschema.String(description='w:h:x:y, optionally crop each frame to a given roi in relative coordinates')),
+    swagger_schema = make_schema({'GET' : [
+        openapi.Parameter(name='pk',
+                          required=True,
+                          in_='path',
+                          description='A unique integer value identifying a media',
+                          type=openapi.TYPE_INTEGER),
+        openapi.Parameter(name='frames',
+                          required=False,
+                          in_='query',
+                          description='Comma-seperated list of frames to capture (default = 0)',
+                          type=openapi.TYPE_STRING),
+        openapi.Parameter(name='tile',
+                          required=False,
+                          in_='query',
+                          description='wxh, if not supplied is made as squarish as possible',
+                          type=openapi.TYPE_STRING),
+        openapi.Parameter(name='roi',
+                          required=False,
+                          in_='query',
+                          description='w:h:x:y, optionally crop each frame to a given roi in relative coordinates',
+                          type=openapi.TYPE_STRING),
     ]})
 
 
@@ -284,7 +289,7 @@ class GetFrameAPI(APIView):
         """ Facility to get a frame(jpg/png) of a given video frame, returns a square tile of frames based on the input parameter """
         try:
             # upon success we can return an image
-            values = self.schema.parse(request, kwargs)
+            values = self.swagger_schema.parse(request, kwargs)
             video = EntityMediaVideo.objects.get(pk=values['pk'])
             logger.info(f"{values['frames']}")
             frames = request.query_params.get('frames', '0')
