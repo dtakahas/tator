@@ -59,7 +59,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'django_extensions',
     'django_admin_json_editor',
-    'django_ltree'
+    'django_ltree',
+    'drf_yasg',
 ]
 
 CHANNEL_LAYERS = {
