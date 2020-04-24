@@ -45,4 +45,5 @@ from .user import CurrentUserSchema
 from .version import VersionListSchema
 from .version import VersionDetailSchema
 from ._parse import parse
+from ._parse import OpenAPIParserMixin
 from ._generator import CustomGenerator

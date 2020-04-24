@@ -31,7 +31,7 @@ from ..search import TatorSearch
 from ..schema import StateListSchema
 from ..schema import StateDetailSchema
 from ..schema import StateGraphicSchema
-from ..schema import parse
+from ..schema import OpenAPIParserMixin
 
 from ._annotation_query import get_annotation_queryset
 from ._attributes import AttributeFilterMixin
@@ -47,7 +47,7 @@ from ._permissions import ProjectViewOnlyPermission
 
 logger = logging.getLogger(__name__)
 
-class StateListAPI(APIView, AttributeFilterMixin):
+class StateListAPI(OpenAPIParserMixin, APIView, AttributeFilterMixin):
     """ Interact with list of states.
 
         A state is a description of a collection of other objects. The objects a state describes
@@ -67,7 +67,7 @@ class StateListAPI(APIView, AttributeFilterMixin):
     permission_classes = [ProjectEditPermission]
 
     def get_queryset(self):
-        params = parse(self.request)
+        params = self.request.parse()
         self.validate_attribute_filter(params)
         annotation_ids, annotation_count, _ = get_annotation_queryset(
             params['project'],
@@ -78,7 +78,7 @@ class StateListAPI(APIView, AttributeFilterMixin):
 
     def get(self, request, format=None, **kwargs):
         try:
-            params = parse(request)
+            params = self.request.parse()
             filterType = params.get('type', None)
             self.validate_attribute_filter(params)
             annotation_ids, annotation_count, _ = get_annotation_queryset(
@@ -146,7 +146,7 @@ class StateListAPI(APIView, AttributeFilterMixin):
         response=Response({})
 
         try:
-            params = parse(request)
+            params = request.parse()
             media_ids=[]
             if 'media_ids' in params:
                 req_ids = params['media_ids'];
@@ -263,7 +263,7 @@ class StateListAPI(APIView, AttributeFilterMixin):
     def delete(self, request, **kwargs):
         response = Response({})
         try:
-            params = parse(request)
+            params = request.parse()
             self.validate_attribute_filter(params)
             annotation_ids, annotation_count, query = get_annotation_queryset(
                 params['project'],
@@ -288,7 +288,7 @@ class StateListAPI(APIView, AttributeFilterMixin):
     def patch(self, request, **kwargs):
         response = Response({})
         try:
-            params = parse(request)
+            params = request.parse()
             self.validate_attribute_filter(params)
             annotation_ids, annotation_count, query = get_annotation_queryset(
                 params['project'],
@@ -328,7 +328,7 @@ class StateDetailAPI(RetrieveUpdateDestroyAPIView):
     def delete(self, request, **kwargs):
         response = Response({}, status=status.HTTP_204_NO_CONTENT)
         try:
-            params = parse(request)
+            params = request.parse()
             state_object = EntityState.objects.get(pk=params['id'])
             association_object = state_object.association
             association_object.delete()
@@ -346,7 +346,7 @@ class StateDetailAPI(RetrieveUpdateDestroyAPIView):
     def patch(self, request, **kwargs):
         response = Response({})
         try:
-            params = parse(request)
+            params = request.parse()
             state_object = EntityState.objects.get(pk=params['id'])
             # Patch modified fields
             if 'modified' in params:
@@ -396,7 +396,7 @@ class StateGraphicAPI(APIView):
         # TODO: Add logic for all state types
         try:
             # upon success we can return an image
-            params = parse(request)
+            params = request.parse()
             state = EntityState.objects.get(pk=params['id'])
 
             mode = params['mode']
